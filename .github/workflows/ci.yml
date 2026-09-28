@@ -1,0 +1,58 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  testes:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+          cache: maven
+      - name: Testes (sem chamar modelo)
+        run: mvn -B verify
+
+  avaliacao:
+    # Avaliação real contra o spring-ai-chat-documentos. Só roda se o repositório tiver o
+    # segredo GEMINI_API_KEY; sem ele, o job passa avisando que pulou.
+    runs-on: ubuntu-latest
+    needs: testes
+    env:
+      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Sem segredo, sem avaliação
+        if: env.GEMINI_API_KEY == ''
+        run: echo "::notice::Segredo GEMINI_API_KEY não configurado; avaliação real pulada."
+      - uses: actions/setup-java@v4
+        if: env.GEMINI_API_KEY != ''
+        with:
+          distribution: temurin
+          java-version: 21
+          cache: maven
+      - name: Sobe o sistema avaliado
+        if: env.GEMINI_API_KEY != ''
+        run: |
+          docker compose up -d --build
+          for i in $(seq 1 90); do curl -sf localhost:8080/api/info && break; sleep 2; done
+      - name: Avaliação (falha se alguma métrica ficar abaixo do limite)
+        if: env.GEMINI_API_KEY != ''
+        run: mvn -B -q -DskipTests package && java -jar target/spring-ai-avaliacao-rag-0.1.0.jar
+      - name: Calibração (com respostas sabotadas, a avaliação TEM que reprovar)
+        if: env.GEMINI_API_KEY != ''
+        run: |
+          if SABOTAR=true java -jar target/spring-ai-avaliacao-rag-0.1.0.jar; then
+            echo "::error::O avaliador aprovou respostas sabotadas: está complacente."; exit 1
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always() && env.GEMINI_API_KEY != ''
+        with:
+          name: relatorios
+          path: relatorios/avaliacao-*

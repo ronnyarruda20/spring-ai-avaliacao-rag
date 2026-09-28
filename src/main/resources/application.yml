@@ -1,0 +1,33 @@
+spring:
+  application:
+    name: spring-ai-avaliacao-rag
+  main:
+    web-application-type: none
+    banner-mode: off
+  ai:
+    model:
+      # Provedor do modelo avaliador: google-genai (padrão) ou anthropic.
+      chat: ${JUIZ_PROVIDER:google-genai}
+      embedding:
+        text: none
+    google:
+      genai:
+        api-key: ${GEMINI_API_KEY:}
+        chat:
+          options:
+            # O avaliador deve ser mais forte que o modelo avaliado (gemini-3.8-flash).
+            model: ${JUIZ_MODELO_GEMINI:gemini-3.1-pro-preview}
+    anthropic:
+      api-key: ${ANTHROPIC_API_KEY:}
+      chat:
+        options:
+          model: ${JUIZ_MODELO_ANTHROPIC:claude-opus-5}
+          max-tokens: 16000
+
+avaliacao:
+  alvo: ${ALVO:http://localhost:8080}
+  conjunto: ${CONJUNTO:avaliacao/conjunto.yaml}
+  saida: ${SAIDA:relatorios}
+  timeout: 3m
+  # true: estraga as respostas de propósito para provar que o avaliador detecta erros.
+  sabotar: ${SABOTAR:false}

@@ -1,0 +1,26 @@
+# Sobe o sistema avaliado (spring-ai-chat-documentos), construído direto do repositório dele.
+#   export GEMINI_API_KEY=sua-chave
+#   docker compose up -d --build
+services:
+  postgres:
+    image: pgvector/pgvector:pg17
+    environment:
+      POSTGRES_DB: chatdocs
+      POSTGRES_USER: chatdocs
+      POSTGRES_PASSWORD: chatdocs
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U chatdocs -d chatdocs"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+  chat-documentos:
+    build: https://github.com/ronnyarruda20/spring-ai-chat-documentos.git#main
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DB_URL: jdbc:postgresql://postgres:5432/chatdocs
+      GEMINI_API_KEY: ${GEMINI_API_KEY:?defina GEMINI_API_KEY}
+    ports:
+      - "8080:8080"

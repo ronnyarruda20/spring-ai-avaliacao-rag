@@ -1,0 +1,9 @@
+target/
+cp.txt
+*.log
+.idea/
+*.iml
+.vscode/
+.env
+# Execuções locais; os exemplos versionados começam com "exemplo-".
+relatorios/avaliacao-*
